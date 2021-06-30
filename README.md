@@ -49,6 +49,13 @@ All columns containing dates should be set to the date-time type in access (or f
 | MYEAR | STATN | LATIT | LONGI  | PROJ | ORDERER | SDATE | STIME | EDATE | ETIME | POSYS | PURPM | MPROG | COMNT_VISIT | SLABO | ACKR_SMP | SMTYP | LATIT | LONGI  | METDC | COMNT_SAMP | LATNM | DPM | ODATE | OTIME | ALABO | ACKR_SMP | RAW | COMNT_VAR | SMPDEPTH | WADEPTH |
 | ----- | ----- | ----- | -----  | ---- | ------- | ----- | ----- | ----- | ----- | ----- | ----- | ----- | ----------- | ----- | -------- | ----- | ----- | -----  | ----- | ---------- | ----- | --- | ----- | ----- | ----- | -------- | --- | --------- | -------- | ------- |
 
+### Metadata sheet/table name
+**Excel** The data is assumed to be in the second sheet.
+
+**MS Access** The data is assumed to be in a table named "Deployment metadata". 
+
+They can easily be changed in the script in the load_meta_data function if the format of the input data were to change. 
+
 ## Using the script
 Run the script by using:
 ```bash
