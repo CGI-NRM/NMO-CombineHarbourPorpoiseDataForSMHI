@@ -5,7 +5,7 @@ This script is for combining multiple CPOD export files into a file ready to be 
 ### These are placed at the top of the CombineDataForSMHI.R file
 > path_to_folder <- "./data/cpod_exports/"
 
-> meta_data_path <- "./data/metadata.xlsx"
+> meta_data_path <- "./data/metadata.xlsx" (or metadata.accdb)
 
 > target_positions_path <- "./data/target_positions.xlsx"
 
@@ -27,6 +27,7 @@ NMO-CombineHarbourPorpoiseDataForSMHI
     ├───cpod_exports
     │   └───exported_harbour_porpoise.txt
     ├───metadata.xlsx
+    ├───metadata.accdb
     ├───target_positions.xlsx
     └───export_template.xlsx
 ```
@@ -35,6 +36,10 @@ NMO-CombineHarbourPorpoiseDataForSMHI
 ### Expected columns in the metadata
 | # | Station name | Project | Station number | C-POD no | SD-card no | Entered by | Date for C-POD setup | Time for C-POD setup | Battery brand and model | Silica gel | Func test | Setup procedure | Setup operator | Setup comments | C-POD deployment date | C-POD deployment time | C-POD deployment GPS LAT | C-POD deployment GPS LONG | C-POD deployment LAT | C-POD deployment LONG | Xtra anchor deployment GPS LAT | Xtra anchor deployment GPS LONG | Xtra anchor deployment LAT | Xtra anchor deployment LONG | Water depth | Depth type | C-POD depth | Mooring type  | Releaser | Sound recording equipment | Bottom line length | Line weights | Line floats | Wave height | Wind speed | Deployment operator | Deployment vessel | Deployment crew | Deployment comments | Diff lat | Diff long | Diff C-POD-anchor | Date diff start-deploy | Retrieval date | Retrieval time | Retrieval GPS LAT | Retrieval GPS LONG | Retrieval LAT  | Retrieval LONG | Retrieval depth | Retrieval type | # retreival attempts | If unplanned or lost, cause | Estimated time detached | Wave height | Wind speed | Retrieval operator | Retrieval vessel | Retrieval crew | Retrieval comments | Blinking after recovery | Stop date | Stop time | Battery left stack | Battery right stack | Stop operator | Stop comments | Date diff retrieval-stop | File name | Full archive done | Download procedure | Download operator | Download comments | Deployment duration | Crop start date correction | First full day | File end | Last full day | Logging duration | Missing days | Missing days | File cropped | Cropped file duration cpod.exe | KERNO cp3 created | Hel1 cp3 created | Comment | Hel1 DPM | DPM/ yr | Visually validated | False positive DPMs | cpod.exe data exported | Excel file prepared | SMHI form filled in | Date sent to SMHI | Comment | SLIM |
 | - | ------------ | ------- | -------------- | -------- | ---------- | ---------- | -------------------- | -------------------- | ----------------------- | ---------- | --------- | --------------- | -------------- | -------------- | --------------------- | --------------------- | ------------------------ | ------------------------- | -------------------- | --------------------- | ------------------------------ | ------------------------------- | -------------------------- | --------------------------- | ----------- | ---------- | ----------- | ------------  | -------- | ------------------------- | ------------------ | ------------ | ----------- | ----------- | ---------- | ------------------- | ----------------- | --------------- | ------------------- | -------- | --------- | ----------------- | ---------------------- | -------------- | -------------- | ----------------- | ------------------ | -------------  | -------------- | --------------- | -------------- | -------------------- | --------------------------- | ----------------------- | ----------- | ---------- | ------------------ | ---------------- | -------------- | ------------------ | ----------------------- | --------- | --------- | ------------------ | ------------------- | ------------- | ------------- | ------------------------ | --------- | ----------------- | ------------------ | ----------------- | ----------------- | ------------------- | -------------------------- | -------------- | -------- | ------------- | ---------------- | ------------ | ------------ | ------------ | ------------------------------ | ----------------- | ---------------- | ------- | -------- | ------- | ------------------ | ------------------- | ---------------------- | ------------------- | ------------------- | ----------------- | ------- | ---- |
+
+All columns containing dates should be set to the date-time type in access (or formated as dates in excel).
+| Date for C-POD setup | Time for C-POD setup | C-POD deployment date | C-POD deployment time | Retrieval date | Retrieval time | Stop date | Stop time | First full day | File end | Last full day |
+| ------------------- | -------------------- | --------------------- | --------------------- | -------------- | -------------- | --------- | --------- | -------------- | -------- | ------------- |
 
 ### Expected columns in the target positions data
 | Station | LAT | LON | LAT DEG	| LAT MIN | LON DEG | LON MIN |
