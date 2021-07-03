@@ -5,8 +5,9 @@
 #  |                                           |  #
 #  | Combine CPOD exports into a file ready    |  #
 #  | to be exported to SMHI                    |  #
+#  | Also export the data for export to HELCOM |  #
 #  |                                           |  #
-#  | Version: 0.1.1                            |  #
+#  | Version: 0.2.0                            |  #
 #  | Written by: Elias Lundell                 |  #
 #  \-------------------------------------------/  #
 #                                                 #
@@ -39,13 +40,26 @@ target_positions_path <- "./data/Target positions NMO.xlsx"
 smhi_template_path <-
   "./data/Format Harbour Porpoise 2021-06-21.xlsx"
 
+# The path to an excel document which will bu used as an template for exporting the data to helcom
+helcom_template_path <-
+  "./data/Template helcom.xlsx"
+
 # Whether to export the data to excel (split into XXXXXX rows in needed) and csv
 export_xlsx <- TRUE
 export_csv <- TRUE
+export_helcom <- TRUE
 
 # The numbers of rows in each excel document, if the data adds upp to more than this
 # it will be split into multiple files
 rows_in_each_xlsx <- 500000
+
+# HELCOM 'Detection confirmed by visual inspection' replacement map
+detection_confirmed_by_visual_inspection_hashmap <-
+  new.env(hash = TRUE)
+detection_confirmed_by_visual_inspection_hashmap[["y"]] <- "yes"
+detection_confirmed_by_visual_inspection_hashmap[["no need"]] <-
+  "no"
+#detection_confirmed_by_visual_inspection_hashmap[["n.a."]] <- "no"
 
 ############################
 # ------------------------ #
@@ -376,6 +390,12 @@ prepare_only_dpm_minutes <-
       all_minutes[, "MPROG"] <- "PROJ"
     }
 
+    if (export_helcom) {
+      # Copy 'Visually validated' for HELCOM export
+      all_minutes[, "Visually validated"] <-
+        meta_data[matching_row, "Visually validated"]
+    }
+
     # 15. The all minutes sheet is now complete
     # -----------------------------------------
 
@@ -430,6 +450,71 @@ prepare_only_dpm_minutes <-
     only_dpm_minutes
   }
 
+# Export data to excel and split it into multiple files if necessary (larger than rows_in_each_xlsx)
+export_to_xlsx <-
+  function(data_to_export,
+           template_path,
+           export_file_name,
+           sheet_name,
+           startCol,
+           startRow) {
+    # The index of the row_segment to be saved this loop
+    part_ind <- 1
+    # Cache how many rows of data we have to not have to do this many times
+    data_rows <- nrow(data_to_export)
+
+    print(paste0(
+      "Writing data to excel template... (",
+      ceiling(data_rows / rows_in_each_xlsx),
+      " file(s))"
+    ))
+
+    # While there are more rows in total than we have exported
+    while (data_rows > (part_ind - 1) * rows_in_each_xlsx) {
+      # The segment of the data to export, 1:5 -> 6:10 -> 11:15 etc
+      part_segment <-
+        ((part_ind - 1) * rows_in_each_xlsx + 1):(min(part_ind * rows_in_each_xlsx, data_rows))
+
+      # An ending to add to the file, will reset if only one file is needed
+      file_part_number <- paste0("_part", part_ind)
+
+      # If this is the only file we need, add nothing special to the file name
+      if (data_rows <= rows_in_each_xlsx) {
+        file_part_number <- ""
+      }
+
+      # Open the template
+      xlsx_export <- openxlsx::loadWorkbook(template_path)
+
+      # Write our data (which is correctly spaced out). As of me writing this (2021-06-23) I could not find any
+      # way to disable the header row. colNames chooses between using the names and using Col1 Col2 etc.
+      # Maybe another package could do it, this one was nice because it didn't use a JVM (which limits us the 1gb
+      # which is way to small).
+      openxlsx::writeDataTable(
+        xlsx_export,
+        sheet_name,
+        data_to_export[part_segment,],
+        startCol = startCol,
+        startRow = startRow,
+        headerStyle = NULL,
+        colNames = TRUE,
+        withFilter = FALSE
+      )
+
+      print(paste0(
+        "Saving export file: ",
+        paste0(export_file_name, index, file_part_number, ".xlsx")
+      ))
+      # Save the file
+      openxlsx::saveWorkbook(xlsx_export,
+                             paste0(export_file_name, index, file_part_number, ".xlsx"))
+
+      # This segment of the export is done, now export the next part (or finish the while if we have
+      # exported all of the rows of data)
+      part_ind <- part_ind + 1
+    }
+  }
+
 ############################
 # ------------------------ #
 #     PERFORMING CODE      #
@@ -482,6 +567,11 @@ print("Done combining all files, ordering the columns...")
 
 # 21. 22. Sort the columns in the following way and discard the rest
 # ------------------------------------------------------------------
+
+# Now that we start to sort and filter the SMHI export, we copy the visually validated column to a
+# separate dataframe to keep it
+visually_validated_df <-
+  combined_dpm_minutes[, "Visually validated"]
 
 # Choose wether to fit the data to the template (hard coded) (= FALSE) or just order the columns we have
 # created/added data to (= TRUE)
@@ -596,73 +686,32 @@ if (FALSE) {
 
 # Find an available filename to not override our old exports
 index <- 1
-export_file_name <- paste0("./smhi_export_", Sys.Date(), "_")
+smhi_export_file_name <- paste0("./smhi_export_", Sys.Date(), "_")
+helcom_export_file_name <-
+  paste0("./HELCOM_export_", Sys.Date(), "_")
 
 # While a file exists with that name, add one to our index. Each export (the same day) will produce:
 # smhi_export_yyyy_mm_dd_1.xlsx
 # smhi_export_yyyy_mm_dd_2.xlsx
 # smhi_export_yyyy_mm_dd_3.xlsx
-while (file.exists(paste0(export_file_name, index, ".xlsx")) ||
-       file.exists(paste0(export_file_name, index, ".csv"))) {
+while (file.exists(paste0(smhi_export_file_name, index, ".xlsx")) ||
+       file.exists(paste0(smhi_export_file_name, index, "_part1.xlsx")) ||
+       file.exists(paste0(smhi_export_file_name, index, ".csv")) ||
+       file.exists(paste0(helcom_export_file_name, index, ".xlsx")) ||
+       file.exists(paste0(helcom_export_file_name, index, "_part1.xlsx"))) {
   index <- index + 1
 }
 
 if (export_xlsx) {
-  # The index of the row_segment to be saved this loop
-  part_ind <- 1
-  # Cache how many rows of data we have to not have to do this many times
-  data_rows <- nrow(combined_dpm_minutes)
-
-  print(paste0(
-    "Writing data to excel template... (",
-    ceiling(data_rows / rows_in_each_xlsx),
-    " file(s))"
-  ))
-
-  # While there are more rows in total than we have exported
-  while (data_rows > (part_ind - 1) * rows_in_each_xlsx) {
-    # The segment of the data to export, 1:5 -> 6:10 -> 11:15 etc
-    part_segment <-
-      ((part_ind - 1) * rows_in_each_xlsx + 1):(min(part_ind * rows_in_each_xlsx, data_rows))
-
-    # An ending to add to the file, will reset if only one file is needed
-    file_part_number <- paste0("_part", part_ind)
-
-    # If this is the only file we need, add nothing special to the file name
-    if (data_rows <= rows_in_each_xlsx) {
-      file_part_number <- ""
-    }
-
-    # Open the template
-    smhi_export <- openxlsx::loadWorkbook(smhi_template_path)
-
-    # Write our data (which is correctly spaced out). As of me writing this (2021-06-23) I could not find any
-    # way to disable the header row. colNames chooses between using the names and using Col1 Col2 etc.
-    # Maybe another package could do it, this one was nice because it didn't use a JVM (which limits us the 1gb
-    # which is way to small).
-    openxlsx::writeDataTable(
-      smhi_export,
-      "Kolumner",
-      combined_dpm_minutes[part_segment,],
-      startCol = 1,
-      startRow = 5,
-      headerStyle = NULL,
-      colNames = TRUE,
-      withFilter = FALSE
-    )
-
-    print(paste0(
-      "Saving export file: ",
-      paste0(export_file_name, index, file_part_number, ".xlsx")
-    ))
-    # Save the file
-    openxlsx::saveWorkbook(smhi_export,
-                           paste0(export_file_name, index, file_part_number, ".xlsx"))
-
-    # This segment of the export is done, now export the next part (or finish the while if we have
-    # exported all of the rows of data)
-    part_ind <- part_ind + 1
-  }
+  # Export data and split it into multiple files if necessary
+  export_to_xlsx(
+    data_to_export = combined_dpm_minutes,
+    template_path = smhi_template_path,
+    export_file_name = smhi_export_file_name,
+    sheet_name = "Kolumner",
+    startCol = 1,
+    startRow = 5
+  )
 }
 
 if (export_csv) {
@@ -670,35 +719,196 @@ if (export_csv) {
 
   write.csv(
     combined_dpm_minutes,
-    file = paste0(export_file_name, index, ".csv"),
+    file = paste0(smhi_export_file_name, index, ".csv"),
     na = "",
     fileEncoding = "utf8",
     row.names = FALSE
   )
 }
 
-#linux commands
-#sudo !!
-#ctrl+x+e
-#space before to not show in history
-#ramdisk
-#fc (open last command, edit, and run)
-#mkdir -p folder/{sub1,sub2}/{ssub1,ssub2,ssub3}
-#mkdir -p folder/{1..100}/{1..100}
-#cat file.txt | tee -a log.txt | cat > /dev/null
-#disown -a && exit
+if (export_helcom) {
+  # Create the empty tibble which we can add data to
+  helcom <- tibble()
+
+  # Set the country to Sweden on as many rows as we will use. Since the tibble is empty we have to use
+  # the seq code, instead of it just automatically repeating Sweden across all rows (since there are none)
+  # right now
+  helcom[seq(1, nrow(combined_dpm_minutes)), "Country"] <-
+    rep("Sweden", nrow(combined_dpm_minutes))
+
+  # Copy over the dpm to detection, and replace "Y" with 1 and "N" with 0
+  helcom[, "Detection"] <- combined_dpm_minutes[, "DPM"] %>%
+    lapply(function (x) {
+      if (x == "Y") {
+        return(1)
+      }
+      return(0)
+    }) %>% unlist
+
+  # Now we can set all the rows in a column to be the same, adding metadata that is consistant
+  helcom[, "Unit"] <- "Detection positive minutes"
+  helcom[, "Type of recording device"] <- "C-POD"
+  helcom[, "Data collector"] <- "MNHS"
+  helcom[, "Data holder"] <- "SMHI"
+  helcom[, "Filter used"] <- "Hel1"
+  helcom[, "Information_withheld"] <- "no"
+  helcom[, "Restriction_yes_no"] <- "no"
+
+  # Extract all the detection dates, since HELCOM wants to have year, month and day in separate columns
+  # we first split it by - (2020-04-15) becomes c(2020, 04, 15).
+  odates <- combined_dpm_minutes[, "ODATE"] %>% lapply(function(x) {
+    unlist(strsplit(x, "-"))
+  })
+  # We then convert it to a dataframe since we need to rotate the columns and rows. (To set entire cols
+  # later). We extract the first, second and third element in each list and make those separate columns
+  odates_df <-
+    data.frame(
+      year = lapply(odates, `[`, 1) %>% unlist %>% as.numeric,
+      month = lapply(odates, `[`, 2) %>% unlist %>% as.numeric,
+      day = lapply(odates, `[`, 3) %>% unlist %>% as.numeric
+    )
+
+  # Now copy the data over from the dataframe, this could be made inline, but this way its a little bit
+  # easier to read (I think)
+  helcom[, "Day of UTC detection"] <- odates_df[, "day"]
+  helcom[, "Month of UTC detection"] <- odates_df[, "month"]
+  helcom[, "Year of UTC detection"] <- odates_df[, "year"]
+  # Then we copy over the times, they need not be changed
+  helcom[, "Time of UTC detection"] <-
+    combined_dpm_minutes[, "OTIME"]
+
+  # Copy the water depth, this is only taken if the depth is known previously (measured).
+  helcom[, "Position CPOD in the water column"] <-
+    combined_dpm_minutes[, "SMPDEPTH"]
+
+  # Now we extract the same dates from the start date and end date
+  # Split the date on - to separate year, monht and day
+  sdates <- combined_dpm_minutes[, "SDATE"] %>% lapply(function(x) {
+    unlist(strsplit(x, "-"))
+  })
+  # Rotate the list of vectors into a dataframe with a year, month and day columns
+  sdates_df <-
+    data.frame(
+      year = lapply(sdates, `[`, 1) %>% unlist %>% as.numeric,
+      month = lapply(sdates, `[`, 2) %>% unlist %>% as.numeric,
+      day = lapply(sdates, `[`, 3) %>% unlist %>% as.numeric
+    )
+
+  # Split the end dates on - to get separate year, month and day
+  edates <- combined_dpm_minutes[, "EDATE"] %>% lapply(function(x) {
+    unlist(strsplit(x, "-"))
+  })
+  # Rotate the list of vectors to get a dataframe with a year, month and day column
+  edates_df <-
+    data.frame(
+      year = lapply(edates, `[`, 1) %>% unlist %>% as.numeric,
+      month = lapply(edates, `[`, 2) %>% unlist %>% as.numeric,
+      day = lapply(edates, `[`, 3) %>% unlist %>% as.numeric
+    )
+
+  # Copy the start and end dates data over from their repsective dataframes to the helcom tibble
+  helcom[, "Day device start"] <- sdates_df[, "day"]
+  helcom[, "Month device start"] <- sdates_df[, "month"]
+  helcom[, "Year device start"] <- sdates_df[, "year"]
+
+  helcom[, "Day device end"] <- edates_df[, "day"]
+  helcom[, "Month device end"] <- edates_df[, "month"]
+  helcom[, "Year device end"] <- edates_df[, "year"]
+
+  # Copy the measured position over. The target positions are stored in LATIT_prov and LONGI_prov should
+  # they be preferable in the future
+  helcom[, "Latitude deployment of the device"] <-
+    combined_dpm_minutes[, "LATIT"]
+  helcom[, "Longitude deployment of the device"] <-
+    combined_dpm_minutes[, "LONGI"]
+
+  # Copy visually validated from the dataframe to the helcom
+  helcom[, "Detection confirmed by visual inspection"] <-
+    visually_validated_df[,"Visually validated"] %>% apply(1, function(x) {
+      if (is.na(x)) {
+        return(NA)
+      }
+
+      res <- detection_confirmed_by_visual_inspection_hashmap[[x]]
+
+      if (is.null(res)) {
+        print(
+          paste0(
+            "The value of visually validated: ",
+            x,
+            ". Was not found in the replacement map."
+          )
+        )
+        return(NA)
+      } else {
+        return(res)
+      }
+    }) %>% unlist
+
+  # Create a dataframe containing empty columns so that we can space it out correctly for the export
+  helcom_empty_cols <- data.frame(as.list(rep(NA, 13)))
+
+  # Name the columns which contain no data
+  colnames(helcom_empty_cols) <- c(
+    "Detection confirmed by visual inspection",
+    "Station Identification",
+    "Restriction_description",
+    "Citation",
+    "HELCOM id",
+    "Species id",
+    "Collection code",
+    "Subunit",
+    "Field number",
+    "Point_id",
+    "Upload_date"
+  )
+
+  # Combine the data with all the empty columns and sort them based on the order in the template
+  helcom <-
+    cbind(helcom, helcom_empty_cols)[, c(
+      "Country",
+      "Type of recording device",
+      "Day of UTC detection",
+      "Month of UTC detection",
+      "Year of UTC detection",
+      "Time of UTC detection",
+      "Detection",
+      "Unit",
+      "Filter used",
+      "Detection confirmed by visual inspection",
+      "Position CPOD in the water column",
+      "Data collector",
+      "Data holder",
+      "Day device start",
+      "Month device start",
+      "Year device start",
+      "Day device end",
+      "Month device end",
+      "Year device end",
+      "Station Identification",
+      "Latitude deployment of the device",
+      "Longitude deployment of the device",
+      "Information_withheld",
+      "Restriction_yes_no",
+      "Restriction_description",
+      "Citation",
+      "HELCOM id",
+      "Species id",
+      "Collection code",
+      "Subunit",
+      "Field number",
+      "Point_id",
+      "Upload_date"
+    )]
 
 
-# TODO:
-# Check that everything is working
-# - The combining works
-# - The sorting
-# Look at the that that becomes NA
-# PRINT WHAT BECOMES NA!!!
-# R fill excel templates
-# Kolla excel max gr?ns
-# Dubbelchecka stavning p? measured - Ja alla ?r r?ttstavade (UNIQUE i excel)
-# G?ra om till mapp - Ja nu l?ser den in alla xlsx fr?n mappen
-
-# Maila thomas
-# Kolla upp access
+  # Export to excel file, the function splits it into multiple files if the data is too big
+  export_to_xlsx(
+    data_to_export = helcom,
+    template_path = helcom_template_path,
+    export_file_name = helcom_export_file_name,
+    sheet_name = 1,
+    startCol = 1,
+    startRow = 2
+  )
+}
