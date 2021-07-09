@@ -20,6 +20,7 @@ library(zeallot)
 library(openxlsx)
 library(RODBC)
 library(magrittr)
+library(tibble)
 
 ############################
 # ------------------------ #
