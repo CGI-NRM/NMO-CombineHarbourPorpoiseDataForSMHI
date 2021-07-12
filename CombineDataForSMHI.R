@@ -215,7 +215,7 @@ prepare_only_dpm_minutes <-
 
       # We must format the columns ourselves, make the DPM column numbers (1:s and 0:s)
       all_minutes[, "DPM"] <-
-        all_minutes[, "DPM"] %>% sapply(as.numeric)
+        all_minutes[, "DPM"] %>% lapply(as.numeric)
       # In the txt file the date is saved in a string format, convert it into datetime objects
       all_minutes[, "ChunkEnd"] <-
         all_minutes[, "ChunkEnd"] %>% lapply(lubridate::as_datetime, format = "%d/%m/%Y %H:%M")
