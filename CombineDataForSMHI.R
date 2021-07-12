@@ -7,7 +7,7 @@
 #  | to be exported to SMHI                    |  #
 #  | Also export the data for export to HELCOM |  #
 #  |                                           |  #
-#  | Version: 0.2.0                            |  #
+#  | Version: 0.2.1                            |  #
 #  | Written by: Elias Lundell                 |  #
 #  \-------------------------------------------/  #
 #                                                 #
@@ -161,7 +161,7 @@ load_meta_data <- function(meta_data_path) {
       })
   } else if (grepl("\\.accdb$", meta_data_path)) {
     channel <- odbcConnectAccess2007(meta_data_path)
-    meta_data <- tibble(sqlFetch(channel, "Deployment metadata"))
+    meta_data <- tibble::tibble(sqlFetch(channel, "Deployment metadata"))
     odbcClose(channel)
 
     # Force all dates to be in UTC
@@ -206,11 +206,12 @@ prepare_only_dpm_minutes <-
     if (grepl('\\.txt$', filepath)) {
       # We only use the first 3 columns (File, ChunkEnd and DPM) so we throw away other columns
       all_minutes <-
-        tibble(read.table(
+        tibble::tibble(read.table(
           file = filepath,
           header = TRUE,
           sep = "\t",
-          skip = 7
+          skip = 7,
+          stringsAsFactors = FALSE
         ))[, c("File", "ChunkEnd", "DPM")]
 
       print(all_minutes)
@@ -410,7 +411,7 @@ prepare_only_dpm_minutes <-
     # -------------------------------------------------------------------------------
 
     # Using the tibble function copies the data in memory intsead of just copying the pointer
-    only_dpm_minutes <- tibble(all_minutes)
+    only_dpm_minutes <- tibble::tibble(all_minutes)
 
     # 17. Keep only the rows with activity, unless no rows have activity where we save a random
     # row to save that there has been survellience at that point during that time
@@ -735,7 +736,7 @@ if (export_csv) {
 
 if (export_helcom) {
   # Create the empty tibble which we can add data to
-  helcom <- tibble()
+  helcom <- tibble::tibble()
 
   # Set the country to Sweden on as many rows as we will use. Since the tibble is empty we have to use
   # the seq code, instead of it just automatically repeating Sweden across all rows (since there are none)
