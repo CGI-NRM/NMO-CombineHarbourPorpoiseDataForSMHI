@@ -367,7 +367,7 @@ prepare_only_dpm_minutes <-
     water_depth <- ""
     pod_depth <- ""
 
-    if (meta_data[matching_row, "Depth type"] == "measured") {
+    if (!is.na(meta_data[matching_row, "Depth type"]) && meta_data[matching_row, "Depth type"] == "measured") {
       # If it was measured, override the empty variables with the data
       water_depth <- meta_data[matching_row, "Water depth"]
       pod_depth <- meta_data[matching_row, "C-POD depth"]
@@ -388,7 +388,7 @@ prepare_only_dpm_minutes <-
 
     # If this CPOD-export is for the NM? (nationell milj? ?vervakning) projekt the code for
     # type of survelliance is NATL otherwise it is research(?)
-    if (meta_data[matching_row, "Project"] == "NMO") {
+    if (!is.na(meta_data[matching_row, "Project"]) && meta_data[matching_row, "Project"] == "NMO") {
       all_minutes[, "MPROG"] <- "NATL"
     } else {
       all_minutes[, "MPROG"] <- "PROJ"
