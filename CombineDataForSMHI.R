@@ -214,13 +214,9 @@ prepare_only_dpm_minutes <-
           stringsAsFactors = FALSE
         ))[, c("File", "ChunkEnd", "DPM")]
 
-      print(all_minutes)
-
       # We must format the columns ourselves, make the DPM column numbers (1:s and 0:s)
       all_minutes[, "DPM"] <-
         all_minutes[, "DPM"] %>% lapply(as.numeric)
-
-      print(all_minutes)
 
       # In the txt file the date is saved in a string format, convert it into datetime objects
       all_minutes[, "ChunkEnd"] <-
