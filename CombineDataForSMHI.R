@@ -214,6 +214,7 @@ prepare_only_dpm_minutes <-
           stringsAsFactors = FALSE
         ))[, c("File", "ChunkEnd", "DPM")]
 
+
       # We must format the columns ourselves, make the DPM column numbers (1:s and 0:s)
       all_minutes[, "DPM"] <-
         all_minutes[, "DPM"] %>% lapply(as.numeric)
@@ -221,6 +222,8 @@ prepare_only_dpm_minutes <-
       # In the txt file the date is saved in a string format, convert it into datetime objects
       all_minutes[, "ChunkEnd"] <-
         all_minutes[, "ChunkEnd"] %>% lapply(lubridate::as_datetime, format = "%d/%m/%Y %H:%M")
+
+      print(all_minutes)
 
     } else if (grepl('\\.xlsx$', filepath)) {
       # We only use the first 3 columns (File, ChunkEnd and DPM) so we throw away other columns
