@@ -7,7 +7,7 @@
 #  | to be exported to SMHI                    |  #
 #  | Also export the data for export to HELCOM |  #
 #  |                                           |  #
-#  | Version: 0.2.1                            |  #
+#  | Version: 0.2.2                            |  #
 #  | Written by: Elias Lundell                 |  #
 #  \-------------------------------------------/  #
 #                                                 #
@@ -577,7 +577,7 @@ print("Done combining all files, ordering the columns...")
 
 # Now that we start to sort and filter the SMHI export, we copy the visually validated column to a
 # separate dataframe to keep it
-visually_validated_df <-
+helcom_save_df <-
   combined_dpm_minutes[, "Visually validated"]
 
 # Choose wether to fit the data to the template (hard coded) (= FALSE) or just order the columns we have
@@ -831,7 +831,7 @@ if (export_helcom) {
 
   # Copy visually validated from the dataframe to the helcom
   helcom[, "Detection confirmed by visual inspection"] <-
-    visually_validated_df[,"Visually validated"] %>% apply(1, function(x) {
+    helcom_save_df[,"Visually validated"] %>% apply(1, function(x) {
       if (is.na(x)) {
         return(NA)
       }
@@ -852,13 +852,15 @@ if (export_helcom) {
       }
     }) %>% unlist
 
+  # Copy Station number to helcom export
+  helcom[, "Station Identification"] <- combined_dpm_minutes[, "STATN"]
+
   # Create a dataframe containing empty columns so that we can space it out correctly for the export
-  helcom_empty_cols <- data.frame(as.list(rep(NA, 13)))
+  helcom_empty_cols <- data.frame(as.list(rep(NA, 12)))
 
   # Name the columns which contain no data
   colnames(helcom_empty_cols) <- c(
     "Detection confirmed by visual inspection",
-    "Station Identification",
     "Restriction_description",
     "Citation",
     "HELCOM id",
